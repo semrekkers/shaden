@@ -43,6 +43,7 @@ func run(args []string) error {
 		httpAddr             = set.String("addr", ":5000", "http address to serve")
 		repl                 = set.Bool("repl", false, "REPL")
 		singleSampleDisabled = set.Bool("disable-single-sample", false, "disables single-sample mode for feedback loops")
+		recordFile           = set.String("rec", "", "record to file")
 		logger               = log.New(os.Stdout, "", 0)
 	)
 
@@ -96,7 +97,17 @@ func run(args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "creating portaudio backend")
 	}
-	e, err := engine.New(backend, *singleSampleDisabled)
+	var e *engine.Engine
+	if *recordFile != "" {
+		var f *os.File
+		f, err = os.Create(*recordFile)
+		if err != nil {
+			return errors.Wrap(err, "creating record file")
+		}
+		e, err = engine.New(engine.NewRecorderBackend(f, backend), *singleSampleDisabled)
+	} else {
+		e, err = engine.New(backend, *singleSampleDisabled)
+	}
 	if err != nil {
 		return errors.Wrap(err, "engine create failed")
 	}
