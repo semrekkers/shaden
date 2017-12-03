@@ -25,16 +25,14 @@ func newPitch(name string, _ Config) (*Unit, error) {
 }
 
 type pitch struct {
-	class, octave         *In
-	out                   *Out
-	lastClass, lastOctave float64
-	freq                  float64
+	class, octave *In
+	out           *Out
 }
 
 func (p *pitch) ProcessSample(i int) {
 	var (
 		class  = dsp.Clamp(p.class.Read(i), 0, 12)
-		octave = dsp.Clamp(p.octave.Read(i), 0, 8)
+		octave = dsp.Clamp(p.octave.Read(i), 0, 8) + 1
 		idx    = int(octave*10 + class)
 	)
 	p.out.Write(i, pitches[idx])

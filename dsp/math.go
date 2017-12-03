@@ -12,10 +12,10 @@ func RandRange(min, max float64) float64 {
 
 // ExpRatio produces an (inverse-)exponential curve that's inflection can be controlled by a specific ratio
 func ExpRatio(ratio, speed float64) float64 {
-	return math.Exp(-math.Log(float64((1+ratio)/ratio)) / float64(speed))
+	return math.Exp(-math.Log((1+ratio)/ratio) / speed)
 }
 
-// SoftClamp limits a value to a specific range, but compresses the value as it approaches the threshold
+// SoftClamp limits a value to a specific range, but compresses the value as it goes beyond the threshold
 func SoftClamp(s, threshold float64) float64 {
 	abs := math.Abs(s)
 	if abs <= 0.5 {
@@ -90,4 +90,26 @@ func Fold(s, min, max float64) float64 {
 		s += -diff2
 	}
 	return s + min
+}
+
+// Chebyshev generates the Chebyshev polynomial coefficient for order n
+func Chebyshev(n int, x float64) float64 {
+	switch n {
+	case 0:
+		return 1
+	case 1:
+		return x
+	case 2:
+		return (2.0 * x * x) - 1.0
+	}
+	var (
+		y1 = (2.0 * x * x) - 1.0
+		y2 = x
+		y  = y1
+	)
+	for i := 3; i <= n; i++ {
+		y = (2.0 * x * y1) - y2
+		y2, y1 = y1, y
+	}
+	return y
 }

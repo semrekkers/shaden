@@ -97,6 +97,10 @@ func run(args []string) error {
 	if err != nil {
 		return errors.Wrap(err, "creating portaudio backend")
 	}
+	opts := []engine.Option{}
+	if *singleSampleDisabled {
+		opts = append(opts, engine.WithSingleSampleDisabled())
+	}
 	var e *engine.Engine
 	if *recordFile != "" {
 		var f *os.File
@@ -104,9 +108,9 @@ func run(args []string) error {
 		if err != nil {
 			return errors.Wrap(err, "creating record file")
 		}
-		e, err = engine.New(engine.NewRecorderBackend(f, backend), *singleSampleDisabled)
+		e, err = engine.New(engine.NewRecorderBackend(f, backend), opts...)
 	} else {
-		e, err = engine.New(backend, *singleSampleDisabled)
+		e, err = engine.New(backend, opts...)
 	}
 	if err != nil {
 		return errors.Wrap(err, "engine create failed")

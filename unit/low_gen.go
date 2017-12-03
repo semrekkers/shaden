@@ -29,7 +29,6 @@ func newLowGen(name string, _ Config) (*Unit, error) {
 
 type lowGen struct {
 	freq, amp, pw, offset, sync *In
-	algorithm                   string
 	phases                      []float64
 }
 
@@ -91,9 +90,9 @@ func (o *lowGenSine) ProcessSample(i int) {
 	if o.lastSync < 0 && sync > 0 {
 		*o.phase = 0
 	}
-	next := dsp.Sin(*o.phase) * amp
+	next := dsp.Sin(*o.phase)
 	*o.phase = stepPhase(freq, 0, *o.phase, 1)
-	o.out.Write(i, offset+next)
+	o.out.Write(i, (amp*next)+offset)
 }
 
 type lowGenSaw struct {
@@ -117,9 +116,9 @@ func (o *lowGenSaw) ProcessSample(i int) {
 	if o.lastSync < 0 && sync > 0 {
 		*o.phase = 0
 	}
-	next := (2.0*(*o.phase)/twoPi - 1.0) * amp
+	next := (2.0*(*o.phase)/twoPi - 1.0)
 	*o.phase = stepPhase(freq, 0, *o.phase, 1)
-	o.out.Write(0, offset+next)
+	o.out.Write(i, (amp*next)+offset)
 }
 
 type lowGenPulse struct {
@@ -147,20 +146,20 @@ func (o *lowGenPulse) ProcessSample(i int) {
 		*o.phase = 0
 	}
 	if *o.phase < math.Pi*pw {
-		next = 1 * amp
+		next = 1
 	} else {
-		next = -1 * amp
+		next = -1
 	}
 
 	*o.phase = stepPhase(freq, 0, *o.phase, 1)
-	o.out.Write(i, offset+next)
+	o.out.Write(i, (amp*next)+offset)
 }
 
 type lowGenTriangle struct {
 	*lowGen
-	phase          *float64
-	out            *Out
-	last, lastSync float64
+	phase    *float64
+	out      *Out
+	lastSync float64
 }
 
 func (o *lowGenTriangle) IsProcessable() bool { return o.out.ExternalNeighborCount() > 0 }
@@ -180,10 +179,10 @@ func (o *lowGenTriangle) ProcessSample(i int) {
 		*o.phase = 0
 	}
 	if p < math.Pi {
-		next = float64(-1*amp+twoDivPi*p) * amp
+		next = (-1 + twoDivPi*p)
 	} else {
-		next = float64(3*amp-twoDivPi*p) * amp
+		next = (3 - twoDivPi*p)
 	}
 	*o.phase = stepPhase(freq, 0, *o.phase, 1)
-	o.out.Write(i, offset+next)
+	o.out.Write(i, (amp*next)+offset)
 }

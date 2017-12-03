@@ -31,7 +31,6 @@ func newTransposeInterval(name string, _ Config) (*Unit, error) {
 type transposeInterval struct {
 	in, quality, step *In
 	interval          musictheory.Interval
-	zero              bool
 	out               *Out
 }
 
@@ -60,5 +59,5 @@ func (t *transposeInterval) calc(in float64, qual, step int) float64 {
 		interval = musictheory.Augmented(step)
 	}
 
-	return float64(in * interval.Ratio())
+	return in * interval.Ratio()
 }

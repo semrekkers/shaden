@@ -24,7 +24,6 @@ type Out struct {
 	unit  *Unit
 	node  *graph.Node
 	frame []float64
-	last  float64
 }
 
 // NewOut returns a new output
@@ -52,10 +51,12 @@ func (out *Out) DestinationCount() int {
 
 // Write writes a sample to the output frame if there are downstream consumers of the output
 func (out *Out) Write(i int, v float64) {
-	if out.node.OutNeighborCount() == 0 {
-		return
-	}
 	out.frame[i] = v
+}
+
+// Read reads a sample from the internal buffer
+func (out *Out) Read(i int) float64 {
+	return out.frame[i]
 }
 
 // ExternalNeighborCount returns the count of neighboring nodes outside of the parent Unit

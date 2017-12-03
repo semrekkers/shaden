@@ -8,15 +8,15 @@ func newFold(name string, _ Config) (*Unit, error) {
 	io := NewIO()
 	return NewUnit(io, name, &fold{
 		in:    io.NewIn("in", dsp.Float64(0)),
-		level: io.NewIn("level", dsp.Float64(0)),
+		level: io.NewIn("level", dsp.Float64(0.8)),
 		gain:  io.NewIn("gain", dsp.Float64(1)),
 		out:   io.NewOut("out"),
 	}), nil
 }
 
 type fold struct {
-	in, level, gain, stages *In
-	out                     *Out
+	in, level, gain *In
+	out             *Out
 }
 
 func (f *fold) ProcessSample(i int) {
