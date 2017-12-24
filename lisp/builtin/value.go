@@ -32,7 +32,21 @@ func keywordFn(args lisp.List) (interface{}, error) {
 	case lisp.Keyword:
 		return v, nil
 	default:
-		return nil, errors.New("keyword expects a string for argument 1")
+		return lisp.Keyword(fmt.Sprintf("%v", v)), nil
+	}
+}
+
+func stringFn(args lisp.List) (interface{}, error) {
+	if err := checkArityEqual(args, "string", 1); err != nil {
+		return nil, err
+	}
+	switch v := args[0].(type) {
+	case string:
+		return v, nil
+	case lisp.Keyword:
+		return string(v), nil
+	default:
+		return fmt.Sprintf("%v", v), nil
 	}
 }
 
@@ -152,14 +166,6 @@ func isEmptyFn(args lisp.List) (interface{}, error) {
 	default:
 		return nil, errors.New("empty? expects table, list or string for argument 1")
 	}
-}
-
-func isZeroValueFn(args lisp.List) (interface{}, error) {
-	if err := checkArityEqual(args, "zero-value?", 1); err != nil {
-		return nil, err
-	}
-	v := reflect.ValueOf(args[0])
-	return !v.IsValid(), nil
 }
 
 func intFn(args lisp.List) (interface{}, error) {

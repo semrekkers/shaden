@@ -3,9 +3,8 @@ package engine
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	"buddin.us/shaden/dsp"
+	"buddin.us/shaden/errors"
 	"buddin.us/shaden/graph"
 	"buddin.us/shaden/unit"
 )
@@ -25,6 +24,9 @@ func MountUnit(u *unit.Unit) func(*graph.Graph) (interface{}, error) {
 // UnmountUnit removes a Unit from the audio graph.
 func UnmountUnit(u *unit.Unit) func(*graph.Graph) (interface{}, error) {
 	return func(g *graph.Graph) (interface{}, error) {
+		if err := u.Close(); err != nil {
+			return nil, err
+		}
 		if err := u.Detach(g); err != nil {
 			switch err := err.(type) {
 			case graph.NotInGraphError:
