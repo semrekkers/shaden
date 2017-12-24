@@ -67,6 +67,7 @@ var (
 		"pitch":              newPitch,
 		"quantize":           newQuantize,
 		"random-series":      newRandomSeries,
+		"record":             newRecord,
 		"reverb":             newReverb,
 		"sample":             newWAVSample,
 		"shift":              newShift,
