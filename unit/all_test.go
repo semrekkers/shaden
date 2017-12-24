@@ -827,8 +827,7 @@ func TestAllUnits(t *testing.T) {
 			},
 		},
 		{
-			unit:   "bipolar",
-			config: nil,
+			unit: "bipolar",
 			scenario: []scenario{
 				{
 					inputs: map[string][]float64{
@@ -841,8 +840,7 @@ func TestAllUnits(t *testing.T) {
 			},
 		},
 		{
-			unit:   "unipolar",
-			config: nil,
+			unit: "unipolar",
 			scenario: []scenario{
 				{
 					inputs: map[string][]float64{
@@ -855,8 +853,7 @@ func TestAllUnits(t *testing.T) {
 			},
 		},
 		{
-			unit:   "logic",
-			config: nil,
+			unit: "logic",
 			scenario: []scenario{
 				{
 					description: "OR/AND",
@@ -894,8 +891,7 @@ func TestAllUnits(t *testing.T) {
 			},
 		},
 		{
-			unit:   "center",
-			config: nil,
+			unit: "center",
 			scenario: []scenario{
 				{
 					inputs: map[string][]float64{
@@ -903,6 +899,168 @@ func TestAllUnits(t *testing.T) {
 					},
 					outputs: map[string][]float64{
 						"out": []float64{0, 1, -1.005},
+					},
+				},
+			},
+		},
+		{
+			unit: "gate-series",
+			config: Config{
+				"size": 2,
+			},
+			scenario: []scenario{
+				{
+					inputs: map[string][]float64{
+						"clock":   []float64{-1, 1, -1, 1},
+						"advance": []float64{-1, 1, -1, 1},
+					},
+					outputs: map[string][]float64{
+						"0": []float64{-1, 1, -1, -1},
+						"1": []float64{-1, -1, -1, 1},
+					},
+				},
+			},
+		},
+		{
+			unit: "dynamics",
+			scenario: []scenario{
+				{
+					inputs: map[string][]float64{
+						"in":      []float64{1, 1, 1, 1},
+						"clamp":   []float64{1, 1, 1, 1},
+						"relax":   []float64{1, 1, 1, 1},
+						"control": []float64{0, 0, 0, 0},
+					},
+					outputs: map[string][]float64{
+						"out": []float64{0, 0.00390625, 0.0077777099609375, 0.011614613437652587},
+					},
+				},
+			},
+		},
+		{
+			unit: "stages",
+			config: Config{
+				"size": 3,
+			},
+			scenario: []scenario{
+				{
+					description: "first gate mode + data",
+					inputs: map[string][]float64{
+						"0/pulses": []float64{2, 2, 2, 2, 2, 2},
+						"0/mode":   []float64{1, 1, 1, 1, 1, 1},
+						"0/data":   []float64{100, 100, 100, 100, 100, 100},
+						"1/pulses": []float64{1, 1, 1, 1, 1, 1},
+						"1/mode":   []float64{1, 1, 1, 1, 1, 1},
+						"1/data":   []float64{200, 200, 200, 200, 200, 200},
+						"clock":    []float64{-1, 1, -1, 1, -1, 1},
+					},
+					outputs: map[string][]float64{
+						"gate": []float64{-1, 1, -1, -1, -1, -1},
+						"data": []float64{100, 100, 100, 100, 100, 200},
+					},
+				},
+				{
+					description: "first gate mode + frequency",
+					inputs: map[string][]float64{
+						"0/pulses": []float64{2, 2, 2, 2, 2, 2},
+						"0/mode":   []float64{1, 1, 1, 1, 1, 1},
+						"0/freq":   []float64{0.1, 0.1, 0.1, 0.1, 0.1, 0.1},
+						"1/pulses": []float64{1, 1, 1, 1, 1, 1},
+						"1/mode":   []float64{1, 1, 1, 1, 1, 1},
+						"1/freq":   []float64{0.2, 0.2, 0.2, 0.2, 0.2, 0.2},
+						"clock":    []float64{-1, 1, -1, 1, -1, 1},
+					},
+					outputs: map[string][]float64{
+						"gate": []float64{-1, 1, -1, -1, -1, -1},
+						"freq": []float64{0.1, 0.1, 0.1, 0.1, 0.1, 0.2},
+					},
+				},
+				{
+					description: "all gate mode",
+					inputs: map[string][]float64{
+						"0/pulses": []float64{2, 2, 2, 2, 2, 2},
+						"0/mode":   []float64{3, 3, 3, 3, 3, 3},
+						"0/data":   []float64{100, 100, 100, 100, 100, 100},
+						"1/pulses": []float64{1, 1, 1, 1, 1, 1},
+						"1/mode":   []float64{1, 1, 1, 1, 1, 1},
+						"1/data":   []float64{200, 200, 200, 200, 200, 200},
+						"clock":    []float64{-1, 1, -1, 1, -1, 1},
+					},
+					outputs: map[string][]float64{
+						"gate": []float64{-1, 1, -1, 1, -1, -1},
+						"data": []float64{100, 100, 100, 100, 100, 200},
+					},
+				},
+				{
+					description: "last gate mode",
+					inputs: map[string][]float64{
+						"0/pulses": []float64{2, 2, 2, 2, 2, 2},
+						"0/mode":   []float64{2, 2, 2, 2, 2, 2},
+						"0/data":   []float64{100, 100, 100, 100, 100, 100},
+						"1/pulses": []float64{1, 1, 1, 1, 1, 1},
+						"1/mode":   []float64{1, 1, 1, 1, 1, 1},
+						"1/data":   []float64{200, 200, 200, 200, 200, 200},
+						"clock":    []float64{-1, 1, -1, 1, -1, 1},
+					},
+					outputs: map[string][]float64{
+						"gate": []float64{-1, -1, -1, 1, -1, -1},
+						"data": []float64{100, 100, 100, 100, 100, 200},
+					},
+				},
+				{
+					description: "hold gate mode",
+					inputs: map[string][]float64{
+						"0/pulses": []float64{2, 2, 2, 2, 2, 2},
+						"0/mode":   []float64{4, 4, 4, 4, 4, 4},
+						"0/data":   []float64{100, 100, 100, 100, 100, 100},
+						"1/pulses": []float64{1, 1, 1, 1, 1, 1},
+						"1/mode":   []float64{1, 1, 1, 1, 1, 1},
+						"1/data":   []float64{200, 200, 200, 200, 200, 200},
+						"clock":    []float64{1, -1, 1, -1, 1, -1},
+					},
+					outputs: map[string][]float64{
+						"gate": []float64{1, 1, 1, 1, -1, 1},
+						"data": []float64{100, 100, 100, 100, 200, 200},
+					},
+				},
+				{
+					description: "all gate mode + reverse",
+					inputs: map[string][]float64{
+						"mode":     []float64{1, 1, 1, 1, 1, 1},
+						"0/pulses": []float64{2, 2, 2, 2, 2, 2},
+						"0/mode":   []float64{3, 3, 3, 3, 3, 3},
+						"0/data":   []float64{100, 100, 100, 100, 100, 100},
+						"1/pulses": []float64{1, 1, 1, 1, 1, 1},
+						"1/mode":   []float64{1, 1, 1, 1, 1, 1},
+						"1/data":   []float64{200, 200, 200, 200, 200, 200},
+						"2/pulses": []float64{1, 1, 1, 1, 1, 1},
+						"2/mode":   []float64{1, 1, 1, 1, 1, 1},
+						"2/data":   []float64{300, 300, 300, 300, 300, 300},
+						"clock":    []float64{-1, 1, -1, 1, -1, 1},
+					},
+					outputs: map[string][]float64{
+						"gate": []float64{-1, 1, -1, 1, -1, -1},
+						"data": []float64{100, 100, 100, 100, 100, 300},
+					},
+				},
+				{
+					description: "ping pong",
+					inputs: map[string][]float64{
+						"mode":     []float64{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2},
+						"0/pulses": []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+						"0/mode":   []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+						"0/data":   []float64{100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100},
+						"1/pulses": []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+						"1/mode":   []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+						"1/data":   []float64{200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200},
+						"2/pulses": []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+						"2/mode":   []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+						"2/data":   []float64{300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300},
+						"clock":    []float64{1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1},
+					},
+					outputs: map[string][]float64{
+						"gate": []float64{1, -1, -1, 1, -1, 1, 1, -1, -1, 1, -1, 1},
+						"data": []float64{100, 100, 200, 200, 300, 300, 300, 300, 200, 200, 100, 100},
 					},
 				},
 			},
@@ -952,7 +1110,7 @@ func (s scenario) TestUnit(t *testing.T, index int, u *Unit) {
 
 	for name, values := range s.outputs {
 		for i, v := range values {
-			require.Equal(t, v, u.Out[name].Out().Read(i), fmt.Sprintf("output %q -> scenario %d -> sample %d", name, index, i))
+			require.Equal(t, v, u.Out[name].Out().Read(i), fmt.Sprintf("scenario %d -> output %q -> sample %d", index, name, i))
 		}
 	}
 }
