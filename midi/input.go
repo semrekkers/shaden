@@ -24,9 +24,11 @@ func init() {
 func newInput(creator StreamCreator) unit.BuildFunc {
 	return func(c unit.Config) (*unit.Unit, error) {
 		var config struct {
-			Device   int
-			Channels []int
+			Device    int
+			Channels  []int
+			DeviceOut int `mapstructure:"device-out"`
 		}
+		config.DeviceOut = -1
 		if err := mapstructure.Decode(c, &config); err != nil {
 			return nil, err
 		}
@@ -34,6 +36,14 @@ func newInput(creator StreamCreator) unit.BuildFunc {
 		stream, err := creator.NewStream(portmidi.DeviceID(config.Device), int64(dsp.FrameSize))
 		if err != nil {
 			return nil, err
+		}
+
+		var midiOut *portmidi.Stream
+		if config.DeviceOut != -1 {
+			midiOut, err = portmidi.NewOutputStream(portmidi.DeviceID(config.DeviceOut), int64(dsp.FrameSize), 0)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		if len(config.Channels) == 0 {
@@ -54,6 +64,11 @@ func newInput(creator StreamCreator) unit.BuildFunc {
 			io.ExposeOutProcessor(ctrl.newBend(ch))
 			for i := 1; i < 128; i++ {
 				io.ExposeOutProcessor(ctrl.newCC(ch, i))
+			}
+			if midiOut != nil {
+				for i := 0; i < 64; i++ {
+					io.ExposeOutProcessor(ctrl.newToggle(ch, i, midiOut))
+				}
 			}
 		}
 
@@ -106,6 +121,18 @@ func (in *input) newBend(ch int) *bend {
 		input: in,
 		ch:    int64(ch),
 		out:   unit.NewOut(fmt.Sprintf("%d/bend", ch), make([]float64, dsp.FrameSize)),
+	}
+}
+
+func (in *input) newToggle(ch, num int, midiOut *portmidi.Stream) *toggle {
+	// Reset button
+	midiOut.WriteShort(statusNoteOn+int64(ch)-1, int64(num), buttonColorOff)
+	return &toggle{
+		input:   in,
+		ch:      int64(ch),
+		num:     int64(num),
+		midiOut: midiOut,
+		out:     unit.NewOut(fmt.Sprintf("%d/toggle/%d", ch, num), make([]float64, dsp.FrameSize)),
 	}
 }
 
@@ -303,4 +330,48 @@ func (o *bend) ProcessSample(i int) {
 		o.value = float64(e.Data2) / 127
 	}
 	o.out.Write(i, o.value)
+}
+
+type toggle struct {
+	input       *input
+	ch, num     int64
+	value, used bool
+	midiOut     *portmidi.Stream
+	out         *unit.Out
+}
+
+func (o *toggle) IsProcessable() bool { return o.out.ExternalNeighborCount() > 0 }
+func (o *toggle) Out() *unit.Out      { return o.out }
+
+const (
+	buttonColorOff    = 0
+	buttonColorYellow = 5
+	buttonColorGreen  = 1
+)
+
+func (o *toggle) ProcessFrame(n int) {
+	if !o.used {
+		o.midiOut.WriteShort(statusNoteOn+o.ch-1, o.num, buttonColorYellow)
+		o.used = true
+	}
+	for i := 0; i < n; i++ {
+		o.ProcessSample(i)
+	}
+}
+
+func (o *toggle) ProcessSample(i int) {
+	if e := o.input.events[i]; e.Status == statusNoteOn+o.ch-1 && e.Data1 == o.num {
+		buttonColor := int64(buttonColorYellow)
+		if !o.value {
+			buttonColor = buttonColorGreen
+		}
+		o.midiOut.WriteShort(statusNoteOn+o.ch-1, o.num, buttonColor)
+		o.value = !o.value
+	}
+
+	out := -1.0
+	if o.value {
+		out = 1.0
+	}
+	o.out.Write(i, out)
 }
