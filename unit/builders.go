@@ -70,6 +70,7 @@ var (
 		"record":             newRecord,
 		"reverb":             newReverb,
 		"sample":             newWAVSample,
+		"step":               newStep,
 		"shift":              newShift,
 		"slope":              newSlope,
 		"smooth":             newSmooth,
