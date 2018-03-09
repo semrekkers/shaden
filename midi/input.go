@@ -25,9 +25,10 @@ func init() {
 func newInput(creator streamCreator, receiver eventReceiver) func(*unit.IO, unit.Config) (*unit.Unit, error) {
 	return func(io *unit.IO, c unit.Config) (*unit.Unit, error) {
 		var config struct {
-			Rate     int
-			Device   int
-			Channels []int
+			Rate      int
+			Device    int
+			Channels  []int
+			DeviceOut int `mapstructure:"device-out"`
 		}
 		config.DeviceOut = -1
 		if err := mapstructure.Decode(c, &config); err != nil {
@@ -72,7 +73,7 @@ func newInput(creator streamCreator, receiver eventReceiver) func(*unit.IO, unit
 			}
 			if midiOut != nil {
 				for i := 0; i < 64; i++ {
-					io.ExposeOutProcessor(ctrl.newToggle(ch, i, midiOut))
+					io.ExposeOutputProcessor(ctrl.newToggle(ch, i, midiOut))
 				}
 			}
 		}
