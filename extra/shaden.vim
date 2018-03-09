@@ -5,29 +5,52 @@
 "
 " Add these lines to your vimrc:
 "
-"   " Send a visual block of code to Shaden for evaluation
-"   vnoremap <C-S-P> :<C-U>ShadenPatchSelection<CR>
+"   " Send a visual block of code to Shaden
+"   vnoremap <leader>p :<C-U>ShadenPatchSelection<CR>
 "
-"   " Send a line of code to Shaden for evaluation
-"   nnoremap <C-S-P> :<C-U>ShadenPatchLine<CR>
+"   " Send a line of code to Shaden
+"   nnoremap <leader>p :<C-U>ShadenPatchLine<CR>
+"
+"   " Clear the patch and resend the entire file to Shaden
+"   nnoremap <leader>r :<C-U>ShadenRepatch<CR>
 
 if (exists("g:loaded_shaden"))
     finish
 endif
 let g:loaded_shaden = 1
 
+let s:error_message = "unable to communicate with shaden"
+
 if (!exists("g:shaden_http_addr"))
     let g:shaden_http_addr = '127.0.0.1:5000'
 endif
 
+function! ShadenRepatch()
+    let result = system(s:command("(clear)"))
+    if v:shell_error
+        echo s:error_message
+        return
+    endif
+    call s:patch(s:command(join(getline(1,'$'), "\n")))
+endfunction
+
 function! ShadenPatchSelection()
-    let content = s:escape(s:get_visual_selection())
-	echom "shaden: " . system(s:command(content))
+    call s:patch(s:command(s:get_visual_selection()))
 endfunction
 
 function! ShadenPatchLine()
-    let content = s:escape(getline('.'))
-	echom "shaden: " . system(s:command(content))
+    call s:patch(s:command(getline('.')))
+endfunction
+
+function! s:patch(cmd)
+    let result = systemlist(a:cmd)
+    if v:shell_error
+        echo s:error_message
+        return
+    endif
+    for LINE in result
+        echo LINE
+    endfor
 endfunction
 
 function! s:escape(str)
@@ -35,7 +58,7 @@ function! s:escape(str)
 endfunction
 
 function! s:command(content)
-    return printf('curl -sfL http://%s/eval -d "%s"', g:shaden_http_addr, a:content)
+    return printf('curl -sSfL http://%s/eval -d "%s"', g:shaden_http_addr, s:escape(a:content))
 endfunction
 
 function! s:get_visual_selection()
@@ -52,3 +75,4 @@ endfunction
 
 command! ShadenPatchSelection call ShadenPatchSelection()
 command! ShadenPatchLine call ShadenPatchLine()
+command! ShadenRepatch call ShadenRepatch()

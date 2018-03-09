@@ -21,13 +21,13 @@ const controlPeriod = 64
 
 // In is a unit input
 type In struct {
-	Name                      string
-	Mode                      InMode
-	constant, defaultConstant dsp.Valuer
-	frame, constantFrame      []float64
-	unit                      *Unit
-	source                    *Out
-	node                      *graph.Node
+	Name               string
+	Mode               InMode
+	normal             dsp.Valuer
+	frame, normalFrame []float64
+	unit               *Unit
+	source             *Out
+	node               *graph.Node
 
 	controlLastF float64
 	controlLastI int
@@ -37,9 +37,9 @@ type In struct {
 func NewIn(name string, v dsp.Valuer) *In {
 	f := newFrame()
 	in := &In{
-		Name:          name,
-		frame:         f,
-		constantFrame: f,
+		Name:        name,
+		frame:       f,
+		normalFrame: f,
 	}
 	in.setNormal(v)
 	return in
@@ -66,16 +66,15 @@ func (in *In) ReadSlow(i int, f func(float64) float64) float64 {
 }
 
 // ReadSlowInt reads a specific sample from the input frame at a slow rate
-func (in *In) ReadSlowInt(i int, f func(int) int) int {
+func (in *In) ReadSlowInt(i int, f func(float64) int) int {
 	if i%controlPeriod == 0 {
-		in.controlLastI = f(int(in.Read(i)))
+		in.controlLastI = f(in.Read(i))
 	}
 	return in.controlLastI
 }
 
 // Fill fills the internal frame with a specific constant value
 func (in *In) Fill(v dsp.Valuer) {
-	in.constant = v
 	for i := range in.frame {
 		in.frame[i] = v.Float64()
 	}
@@ -103,8 +102,8 @@ func (in *In) HasSource() bool {
 // constant value
 func (in *In) Reset() {
 	in.source = nil
-	in.frame = in.constantFrame
-	in.Fill(in.defaultConstant)
+	in.frame = in.normalFrame
+	in.Fill(in.normal)
 }
 
 // ExternalNeighborCount returns the count of neighboring nodes outside of the parent Unit
@@ -113,7 +112,7 @@ func (in *In) ExternalNeighborCount() int {
 }
 
 func (in *In) setNormal(v dsp.Valuer) {
-	in.defaultConstant = v
+	in.normal = v
 	in.Fill(v)
 }
 
@@ -125,5 +124,21 @@ func isSourceControlRate(in *In) bool {
 	return in.HasSource() && in.source.Rate() == RateControl
 }
 
-func ident(v float64) float64   { return v }
-func minZero(v float64) float64 { return math.Max(v, 0) }
+func ident(v float64) float64 { return v }
+
+func identInt(v float64) int { return int(v) }
+func clampInt(min, max float64) func(float64) int {
+	return func(v float64) int {
+		return int(dsp.Clamp(v, min, max))
+	}
+}
+func minInt(min float64) func(float64) int {
+	return func(v float64) int {
+		return int(math.Max(v, min))
+	}
+}
+func modInt(mod int) func(float64) int {
+	return func(v float64) int {
+		return (int(v) + mod) % mod
+	}
+}

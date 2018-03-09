@@ -1,16 +1,13 @@
 package unit
 
 import (
-	"math"
-
 	"buddin.us/shaden/dsp"
 )
 
 const maxEuclidLayers = 256
 
-func newEuclid(name string, _ Config) (*Unit, error) {
-	io := NewIO()
-	e := &euclid{
+func newEuclid(io *IO, _ Config) (*Unit, error) {
+	return NewUnit(io, &euclid{
 		clock:       io.NewIn("clock", dsp.Float64(-1)),
 		span:        io.NewIn("span", dsp.Float64(5)),
 		fill:        io.NewIn("fill", dsp.Float64(2)),
@@ -20,8 +17,7 @@ func newEuclid(name string, _ Config) (*Unit, error) {
 		pattern:     make([]bool, maxEuclidLayers),
 		lastTrigger: -1,
 		out:         io.NewOut("out"),
-	}
-	return NewUnit(io, name, e), nil
+	}), nil
 }
 
 type euclid struct {
@@ -36,15 +32,13 @@ type euclid struct {
 	idx, lastIdx       int
 }
 
-func spanMin(v float64) float64 { return math.Max(v, 1) }
-
 func (e *euclid) ProcessSample(i int) {
 	var (
-		span           = int(e.span.ReadSlow(i, spanMin))
-		fill           = int(e.fill.ReadSlow(i, ident))
-		offset         = e.offset.ReadSlowInt(i, func(v int) int { return (v + span) % span })
-		trig           = e.clock.Read(i)
-		out    float64 = -1
+		span   = e.span.ReadSlowInt(i, minInt(1))
+		fill   = e.fill.ReadSlowInt(i, identInt)
+		offset = e.offset.ReadSlowInt(i, modInt(span))
+		trig   = e.clock.Read(i)
+		out    = -1.0
 	)
 
 	if e.lastSpan != span || e.lastFill != fill {

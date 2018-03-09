@@ -18,7 +18,9 @@ The name "shaden" comes from the *Cycle of Galand* book series by Edward W. Robe
 - [Music theory primitives](https://github.com/brettbuddin/shaden/wiki/Values#music-theory)
 - MIDI controller and clock input
 - Single-sample feedback loops
-- Vim plugin for sending snippets of code over to the synth for evaluation
+- Editor plugins for sending expressions to the synth for evaluation:
+    - [Vim](extra/shaden.vim)
+    - [VS Code](https://github.com/semrekkers/shaden-vscode)
 
 ## Dependencies
 
@@ -72,7 +74,7 @@ On macOS you can install these dependencies with: `brew install go portaudio por
     $ curl -X POST http://127.0.0.1:5000/eval -d "(define source (unit/gen)) ; ..."
 
 This is my preferred way of interacting with the synthesizer. I've written a small Vim plugin that can send over
-snippets of Lisp code to the program for evaluation. You can get [that plugin here](extra/shaden.vim). Someone has also created a [VS Code plugin](https://github.com/semrekkers/shaden-vscode).
+snippets of Lisp code to the program for evaluation. [You can find that plugin here.](extra/shaden.vim)
 
 The HTTP interface is limited to Lisp evaluation at the moment, but I have hopes of providing an API for direct graph
 manipulation via HTTP.
@@ -86,5 +88,5 @@ For a more information about the Lisp dialect bundled with Shaden, [check out th
 The best way to get to know the way patching works in Shaden is to look at the [examples directory](examples). As far as
 sounds that can be created with it:
 
-- The synth was used to create the intro music for the [GothamGo 2017 conference videos](https://www.youtube.com/watch?v=l_FkVIPerzE)
+- The synth was used to create the intro music for the [GothamGo 2017 conference videos](https://www.youtube.com/playlist?list=PLeGxIOPLk9ELp7dx6A0gtvjbc99dU2kq-)
 - I frequently post patches I've created [on Instagram](https://www.instagram.com/brettbuddin/) and recordings [on Bandcamp](https://returnnil.bandcamp.com).

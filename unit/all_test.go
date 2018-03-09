@@ -2,10 +2,12 @@ package unit
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 
-	"buddin.us/shaden/dsp"
 	"github.com/stretchr/testify/require"
+
+	"buddin.us/shaden/dsp"
 )
 
 var A4 = dsp.Frequency(440).Float64()
@@ -366,11 +368,11 @@ func TestAllUnits(t *testing.T) {
 			scenario: []scenario{
 				{
 					inputs: map[string][]float64{
-						"in":   []float64{3, 1, 3, -3},
-						"gain": []float64{1, 1, 10, 1},
+						"in":   repeatControl([]float64{3, 1, 3, -3}),
+						"gain": padControl([]float64{1, 1, 10, 1}),
 					},
 					outputs: map[string][]float64{
-						"out": []float64{0.950212931632136, 0.6321205588285577, 0.9999999999999064, -0.950212931632136},
+						"out": repeatControl([]float64{0.950212931632136, 0.6321205588285577, 0.9999999999999064, -0.950212931632136}),
 					},
 				},
 			},
@@ -686,12 +688,12 @@ func TestAllUnits(t *testing.T) {
 			scenario: []scenario{
 				{
 					inputs: map[string][]float64{
-						"in":      []float64{A4, A4},
-						"quality": []float64{0, 1},
-						"step":    []float64{1, 2},
+						"in":      []float64{A4, A4, A4, A4, A4},
+						"quality": []float64{0, 1, 2, 3, 4},
+						"step":    []float64{1, 2, 3, 5, 4},
 					},
 					outputs: map[string][]float64{
-						"out": []float64{0.009977324263038548, 0.010570606837144897},
+						"out": []float64{0.009977324263038548, 0.010570606837144897, 0.01257064086062912, 0.01411006728898326, 0.01411006728898326},
 					},
 				},
 			},
@@ -730,11 +732,11 @@ func TestAllUnits(t *testing.T) {
 			scenario: []scenario{
 				{
 					inputs: map[string][]float64{
-						"in":   []float64{0, 1},
-						"bits": []float64{24, 2},
+						"in":   repeatControl([]float64{1, 0.5}),
+						"bits": padControl([]float64{24, 2}),
 					},
 					outputs: map[string][]float64{
-						"out": []float64{-5.956334429922412e-08, 0.7494803197428395},
+						"out": repeatControl([]float64{0.9999999933746846, 0.24982677324761315}),
 					},
 				},
 			},
@@ -938,6 +940,61 @@ func TestAllUnits(t *testing.T) {
 			},
 		},
 		{
+			unit: "random-series",
+			scenario: []scenario{
+				{
+					description: "unlocked",
+					inputs: map[string][]float64{
+						"clock": []float64{
+							-1, 1, -1, 1,
+							-1, 1, -1, 1,
+						},
+						"length": []float64{
+							2, 2, 2, 2,
+							2, 2, 2, 2,
+						},
+					},
+					outputs: map[string][]float64{
+						"gate": []float64{
+							-1, -1, -1, 1,
+							1, 1, 1, -1,
+						},
+						"value": []float64{
+							0, 0, 0, 0.9405090880450124,
+							0.9405090880450124, 0.4377141871869802, 0.4377141871869802, 0.6868230728671094,
+						},
+					},
+				},
+				{
+					description: "partially locked",
+					inputs: map[string][]float64{
+						"clock": []float64{
+							-1, 1, -1, 1,
+							-1, 1, -1, 1,
+						},
+						"length": []float64{
+							2, 2, 2, 2,
+							2, 2, 2, 2,
+						},
+						"lock": []float64{
+							0.5, 0.5, 0.5, 0.5,
+							0.5, 0.5, 0.5, 0.5,
+						},
+					},
+					outputs: map[string][]float64{
+						"gate": []float64{
+							-1, -1, -1, 1,
+							1, 1, 1, 1,
+						},
+						"value": []float64{
+							0, 0, 0, 0.9405090880450124,
+							0.9405090880450124, 0.4377141871869802, 0.4377141871869802, 0.9405090880450124,
+						},
+					},
+				},
+			},
+		},
+		{
 			unit: "stages",
 			config: Config{
 				"size": 3,
@@ -1016,11 +1073,11 @@ func TestAllUnits(t *testing.T) {
 						"1/pulses": []float64{1, 1, 1, 1, 1, 1},
 						"1/mode":   []float64{1, 1, 1, 1, 1, 1},
 						"1/data":   []float64{200, 200, 200, 200, 200, 200},
-						"clock":    []float64{1, -1, 1, -1, 1, -1},
+						"clock":    []float64{-1, 1, -1, 1, -1, 1},
 					},
 					outputs: map[string][]float64{
-						"gate": []float64{1, 1, 1, 1, -1, 1},
-						"data": []float64{100, 100, 100, 100, 200, 200},
+						"gate": []float64{-1, 1, 1, 1, 1, -1},
+						"data": []float64{100, 100, 100, 100, 100, 200},
 					},
 				},
 				{
@@ -1048,19 +1105,19 @@ func TestAllUnits(t *testing.T) {
 					inputs: map[string][]float64{
 						"mode":     []float64{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2},
 						"0/pulses": []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-						"0/mode":   []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+						"0/mode":   []float64{3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3},
 						"0/data":   []float64{100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100},
 						"1/pulses": []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-						"1/mode":   []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+						"1/mode":   []float64{3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3},
 						"1/data":   []float64{200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200},
 						"2/pulses": []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-						"2/mode":   []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+						"2/mode":   []float64{3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3},
 						"2/data":   []float64{300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300},
-						"clock":    []float64{1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1},
+						"clock":    []float64{-1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1},
 					},
 					outputs: map[string][]float64{
-						"gate": []float64{1, -1, -1, 1, -1, 1, 1, -1, -1, 1, -1, 1},
-						"data": []float64{100, 100, 200, 200, 300, 300, 300, 300, 200, 200, 100, 100},
+						"gate": []float64{-1, 1, -1, -1, 1, -1, 1, -1, 1, -1, 1, -1},
+						"data": []float64{100, 100, 100, 200, 200, 300, 300, 200, 200, 100, 100, 200},
 					},
 				},
 			},
@@ -1075,6 +1132,7 @@ func TestAllUnits(t *testing.T) {
 				name += "_" + s.description
 			}
 			t.Run(name, func(t *testing.T) {
+				rand.Seed(1)
 				builder := builders[test.unit]
 				u, err := builder(test.config)
 				require.NoError(t, err)
@@ -1113,4 +1171,25 @@ func (s scenario) TestUnit(t *testing.T, index int, u *Unit) {
 			require.Equal(t, v, u.Out[name].Out().Read(i), fmt.Sprintf("scenario %d -> output %q -> sample %d", index, name, i))
 		}
 	}
+}
+
+func repeatControl(s []float64) []float64 {
+	var ss []float64
+	for _, v := range s {
+		for i := 0; i < controlPeriod; i++ {
+			ss = append(ss, v)
+		}
+	}
+	return ss
+}
+
+func padControl(s []float64) []float64 {
+	var ss []float64
+	for _, v := range s {
+		ss = append(ss, v)
+		for i := 0; i < controlPeriod-1; i++ {
+			ss = append(ss, 0)
+		}
+	}
+	return ss
 }

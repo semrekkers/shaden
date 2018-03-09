@@ -5,14 +5,8 @@ import (
 	"buddin.us/shaden/unit"
 )
 
-func unitBuilders(e *Engine) map[string]unit.BuildFunc {
-	return map[string]unit.BuildFunc{
-		"source": newSource(e),
-	}
-}
-
 func newSink(fadeIn bool) (*unit.Unit, *sink) {
-	io := unit.NewIO()
+	io := unit.NewIO("sink")
 	s := &sink{
 		left: &channel{
 			fadeIn: fadeIn,
@@ -25,7 +19,7 @@ func newSink(fadeIn bool) (*unit.Unit, *sink) {
 			out:    make([]float64, dsp.FrameSize),
 		},
 	}
-	return unit.NewUnit(io, "sink", s), s
+	return unit.NewUnit(io, s), s
 }
 
 type sink struct {
@@ -61,10 +55,9 @@ func (c *channel) tick(i int) {
 	}
 }
 
-func newSource(e *Engine) unit.BuildFunc {
-	return func(unit.Config) (*unit.Unit, error) {
-		io := unit.NewIO()
+func newSource(e *Engine) unit.IOBuilder {
+	return func(io *unit.IO, _ unit.Config) (*unit.Unit, error) {
 		io.NewOutWithFrame("output", e.input)
-		return unit.NewUnit(io, "source", nil), nil
+		return unit.NewUnit(io, nil), nil
 	}
 }

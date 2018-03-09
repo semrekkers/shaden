@@ -4,7 +4,7 @@ import (
 	"buddin.us/shaden/dsp"
 )
 
-func newFilter(name string, c Config) (*Unit, error) {
+func newFilter(io *IO, c Config) (*Unit, error) {
 	var config struct {
 		Poles int
 	}
@@ -14,14 +14,16 @@ func newFilter(name string, c Config) (*Unit, error) {
 
 	if config.Poles == 0 {
 		config.Poles = 4
+	} else if config.Poles > 8 {
+		config.Poles = 8
 	}
 
-	io := NewIO()
-	return NewUnit(io, name, &filter{
+	return NewUnit(io, &filter{
 		filter: &dsp.SVFilter{Poles: config.Poles},
 		in:     io.NewIn("in", dsp.Float64(0)),
 		cutoff: io.NewIn("cutoff", dsp.Frequency(1000)),
 		res:    io.NewIn("res", dsp.Float64(1)),
+		poles:  io.NewIn("poles", dsp.Float64(config.Poles)),
 		lp:     io.NewOut("lp"),
 		bp:     io.NewOut("bp"),
 		hp:     io.NewOut("hp"),
@@ -29,12 +31,13 @@ func newFilter(name string, c Config) (*Unit, error) {
 }
 
 type filter struct {
-	in, cutoff, res *In
-	lp, bp, hp      *Out
-	filter          *dsp.SVFilter
+	in, cutoff, res, poles *In
+	lp, bp, hp             *Out
+	filter                 *dsp.SVFilter
 }
 
 func (f *filter) ProcessSample(i int) {
+	f.filter.Poles = f.poles.ReadSlowInt(i, clampInt(1, 8))
 	f.filter.Cutoff = f.cutoff.ReadSlow(i, ident)
 	f.filter.Resonance = f.res.ReadSlow(i, ident)
 	lp, bp, hp := f.filter.Tick(f.in.Read(i))

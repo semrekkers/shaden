@@ -13,19 +13,17 @@ import (
 	"buddin.us/shaden/unit"
 )
 
-const sendInterval = 10 * time.Millisecond
-
 var defaultStreamCreator = streamCreatorFunc(func(deviceID portmidi.DeviceID, frameSize int64) (eventStream, error) {
 	s, err := portmidi.NewInputStream(deviceID, frameSize)
 	return &stream{Stream: s, stop: make(chan struct{})}, err
 })
 
 // UnitBuilders returns the list of units provided by this package.
-func UnitBuilders() map[string]unit.BuildFunc {
-	return map[string]unit.BuildFunc{
+func UnitBuilders() map[string]unit.Builder {
+	return unit.PrepareBuilders(map[string]unit.IOBuilder{
 		"midi-clock": newClock(defaultStreamCreator, nonBlockingReceiver),
 		"midi-input": newInput(defaultStreamCreator, nonBlockingReceiver),
-	}
+	})
 }
 
 // Initialize initializes portmidi and returns the list of devices on the system.

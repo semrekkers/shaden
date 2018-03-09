@@ -2,6 +2,7 @@ package midi
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/rakyll/portmidi"
@@ -21,12 +22,12 @@ func init() {
 	}
 }
 
-func newInput(creator streamCreator, receiver eventReceiver) unit.BuildFunc {
-	return func(c unit.Config) (*unit.Unit, error) {
+func newInput(creator streamCreator, receiver eventReceiver) func(*unit.IO, unit.Config) (*unit.Unit, error) {
+	return func(io *unit.IO, c unit.Config) (*unit.Unit, error) {
 		var config struct {
-			Device    int
-			Channels  []int
-			DeviceOut int `mapstructure:"device-out"`
+			Rate     int
+			Device   int
+			Channels []int
 		}
 		config.DeviceOut = -1
 		if err := mapstructure.Decode(c, &config); err != nil {
@@ -50,21 +51,24 @@ func newInput(creator streamCreator, receiver eventReceiver) unit.BuildFunc {
 			config.Channels = []int{1}
 		}
 
+		if config.Rate == 0 {
+			config.Rate = 10
+		}
+
 		ctrl := &input{
 			stream:    stream,
-			eventChan: stream.Channel(sendInterval),
+			eventChan: stream.Channel(time.Duration(config.Rate) * time.Millisecond),
 			receiver:  receiver,
 			events:    make([]portmidi.Event, dsp.FrameSize),
 		}
 
-		io := unit.NewIO()
 		for _, ch := range config.Channels {
-			io.ExposeOutProcessor(ctrl.newPitch(ch))
-			io.ExposeOutProcessor(ctrl.newPitchRaw(ch))
-			io.ExposeOutProcessor(ctrl.newGate(ch))
-			io.ExposeOutProcessor(ctrl.newBend(ch))
+			io.ExposeOutputProcessor(ctrl.newPitch(ch))
+			io.ExposeOutputProcessor(ctrl.newPitchRaw(ch))
+			io.ExposeOutputProcessor(ctrl.newGate(ch))
+			io.ExposeOutputProcessor(ctrl.newBend(ch))
 			for i := 1; i < 128; i++ {
-				io.ExposeOutProcessor(ctrl.newCC(ch, i))
+				io.ExposeOutputProcessor(ctrl.newCC(ch, i))
 			}
 			if midiOut != nil {
 				for i := 0; i < 64; i++ {
@@ -73,7 +77,7 @@ func newInput(creator streamCreator, receiver eventReceiver) unit.BuildFunc {
 			}
 		}
 
-		return unit.NewUnit(io, "midi-input", ctrl), nil
+		return unit.NewUnit(io, ctrl), nil
 	}
 }
 

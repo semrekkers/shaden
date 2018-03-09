@@ -4,9 +4,8 @@ import (
 	"buddin.us/shaden/dsp"
 )
 
-func newCount(name string, _ Config) (*Unit, error) {
-	io := NewIO()
-	return NewUnit(io, name, &count{
+func newCount(io *IO, _ Config) (*Unit, error) {
+	return NewUnit(io, &count{
 		trigger:   io.NewIn("trigger", dsp.Float64(-1)),
 		reset:     io.NewIn("reset", dsp.Float64(-1)),
 		limit:     io.NewIn("limit", dsp.Float64(32)),
@@ -35,10 +34,10 @@ func (c *count) ProcessSample(i int) {
 		resetOut float64 = -1
 	)
 
-	if c.lastReset < 0 && reset > 0 {
+	if isTrig(c.lastReset, reset) {
 		c.count = 0
 		resetOut = 1
-	} else if c.lastTrigger < 0 && trigger > 0 {
+	} else if isTrig(c.lastTrigger, trigger) {
 		c.count = (c.count + int(step) + limit) % limit
 		if c.count == 0 {
 			resetOut = 1

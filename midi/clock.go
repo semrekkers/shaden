@@ -1,6 +1,8 @@
 package midi
 
 import (
+	"time"
+
 	"github.com/mitchellh/mapstructure"
 	"github.com/rakyll/portmidi"
 
@@ -8,9 +10,10 @@ import (
 	"buddin.us/shaden/unit"
 )
 
-func newClock(creator streamCreator, receiver eventReceiver) unit.BuildFunc {
-	return func(c unit.Config) (*unit.Unit, error) {
+func newClock(creator streamCreator, receiver eventReceiver) func(*unit.IO, unit.Config) (*unit.Unit, error) {
+	return func(io *unit.IO, c unit.Config) (*unit.Unit, error) {
 		var config struct {
+			Rate      int
 			Device    int
 			FrameRate int
 		}
@@ -27,10 +30,13 @@ func newClock(creator streamCreator, receiver eventReceiver) unit.BuildFunc {
 			config.FrameRate = 24
 		}
 
-		io := unit.NewIO()
-		clk := &clock{
+		if config.Rate == 0 {
+			config.Rate = 10
+		}
+
+		return unit.NewUnit(io, &clock{
 			stream:    stream,
-			eventChan: stream.Channel(sendInterval),
+			eventChan: stream.Channel(time.Duration(config.Rate) * time.Millisecond),
 			receiver:  receiver,
 			frameRate: config.FrameRate,
 			out:       io.NewOut("out"),
@@ -38,8 +44,7 @@ func newClock(creator streamCreator, receiver eventReceiver) unit.BuildFunc {
 			start:     io.NewOut("start"),
 			stop:      io.NewOut("stop"),
 			spp:       io.NewOut("spp"),
-		}
-		return unit.NewUnit(io, "midi-clock", clk), nil
+		}), nil
 	}
 }
 

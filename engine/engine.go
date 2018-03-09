@@ -73,31 +73,22 @@ func New(backend Backend, opts ...Option) (*Engine, error) {
 		opt(e)
 	}
 
-	sinkUnit, sink := newSink(e.fadeIn)
-	if err := sinkUnit.Attach(e.graph); err != nil {
-		return nil, err
-	}
-
-	e.unit = sinkUnit
-	e.lout = sink.left.out
-	e.rout = sink.right.out
-
-	return e, nil
+	return e, e.createSink()
 }
 
-// UnitBuilders returns all unit.BuildFuncs for Units provided by the Engine.
-func (e *Engine) UnitBuilders() map[string]unit.BuildFunc {
-	return unitBuilders(e)
+// UnitBuilders returns all unit.Builders for Units provided by the Engine.
+func (e *Engine) UnitBuilders() map[string]unit.Builder {
+	return unit.PrepareBuilders(map[string]unit.IOBuilder{
+		"source": newSource(e),
+	})
 }
 
 func (e *Engine) closeProcessors() error {
 	for _, p := range e.processors {
-		closer, ok := p.(io.Closer)
-		if !ok {
-			continue
-		}
-		if err := closer.Close(); err != nil {
-			return err
+		if closer, ok := p.(io.Closer); ok {
+			if err := closer.Close(); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -110,6 +101,15 @@ func (e *Engine) Reset() error {
 	}
 	e.graph = graph.New()
 
+	if err := e.createSink(); err != nil {
+		return err
+	}
+	e.sort()
+
+	return nil
+}
+
+func (e *Engine) createSink() error {
 	sinkUnit, sink := newSink(e.fadeIn)
 	if err := sinkUnit.Attach(e.graph); err != nil {
 		return err
@@ -117,9 +117,6 @@ func (e *Engine) Reset() error {
 	e.unit = sinkUnit
 	e.lout = sink.left.out
 	e.rout = sink.right.out
-
-	e.sort()
-
 	return nil
 }
 
@@ -171,50 +168,10 @@ func (e *Engine) call(action interface{}) (interface{}, error) {
 func (e *Engine) sort() {
 	processors := e.processors[:0]
 	for _, v := range e.graph.Sorted() {
-		e.collectProcessor(&processors, v)
+		collectProcessor(&processors, v, e.singleSampleDisabled)
 	}
 	e.processors = processors
 	e.graph.AckChange()
-}
-
-func (e *Engine) collectProcessor(processors *[]unit.FrameProcessor, nodes []*graph.Node) {
-	if len(nodes) > 1 {
-		e.collectGroup(processors, nodes)
-		return
-	}
-
-	first := nodes[0]
-	if in, ok := first.Value.(*unit.In); ok && !e.singleSampleDisabled {
-		in.Mode = unit.Block
-	}
-	if p, ok := first.Value.(unit.FrameProcessor); ok {
-		if isp, ok := p.(unit.CondProcessor); ok {
-			if isp.IsProcessable() {
-				*processors = append(*processors, p)
-			}
-		} else {
-			*processors = append(*processors, p)
-		}
-	}
-}
-
-func (e *Engine) collectGroup(processors *[]unit.FrameProcessor, nodes []*graph.Node) {
-	var g group
-	for _, w := range nodes {
-		if in, ok := w.Value.(*unit.In); ok && !e.singleSampleDisabled {
-			in.Mode = unit.Sample
-		}
-		if p, ok := w.Value.(unit.SampleProcessor); ok {
-			if isp, ok := p.(unit.CondProcessor); ok {
-				if isp.IsProcessable() {
-					g.processors = append(g.processors, p)
-				}
-			} else {
-				g.processors = append(g.processors, p)
-			}
-		}
-	}
-	*processors = append(*processors, g)
 }
 
 func (e *Engine) handle(msg *Message) {
@@ -260,6 +217,46 @@ func (e *Engine) callback(in []float32, out [][]float32) {
 	}
 }
 
+func collectProcessor(processors *[]unit.FrameProcessor, nodes []*graph.Node, singleSampleDisabled bool) {
+	if len(nodes) > 1 {
+		collectGroup(processors, nodes, singleSampleDisabled)
+		return
+	}
+
+	first := nodes[0]
+	if in, ok := first.Value.(*unit.In); ok && !singleSampleDisabled {
+		in.Mode = unit.Block
+	}
+	if p, ok := first.Value.(unit.FrameProcessor); ok {
+		if isp, ok := p.(unit.CondProcessor); ok {
+			if isp.IsProcessable() {
+				*processors = append(*processors, p)
+			}
+		} else {
+			*processors = append(*processors, p)
+		}
+	}
+}
+
+func collectGroup(processors *[]unit.FrameProcessor, nodes []*graph.Node, singleSampleDisabled bool) {
+	var g group
+	for _, w := range nodes {
+		if in, ok := w.Value.(*unit.In); ok && !singleSampleDisabled {
+			in.Mode = unit.Sample
+		}
+		if p, ok := w.Value.(unit.SampleProcessor); ok {
+			if isp, ok := p.(unit.CondProcessor); ok {
+				if isp.IsProcessable() {
+					g.processors = append(g.processors, p)
+				}
+			} else {
+				g.processors = append(g.processors, p)
+			}
+		}
+	}
+	*processors = append(*processors, g)
+}
+
 type group struct {
 	processors []unit.SampleProcessor
 }
@@ -274,12 +271,10 @@ func (g group) ProcessFrame(n int) {
 
 func (g group) Close() error {
 	for _, p := range g.processors {
-		closer, ok := p.(io.Closer)
-		if !ok {
-			continue
-		}
-		if err := closer.Close(); err != nil {
-			return err
+		if closer, ok := p.(io.Closer); ok {
+			if err := closer.Close(); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

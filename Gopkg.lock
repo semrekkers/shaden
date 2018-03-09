@@ -2,16 +2,16 @@
 
 
 [[projects]]
+  branch = "master"
   name = "buddin.us/musictheory"
   packages = ["."]
-  revision = "40169c3cf984a69d75678a5625514383bb63d51a"
-  version = "v0.0.8"
+  revision = "6afbb57780ddef267e7cb7671e928170a089b8a8"
 
 [[projects]]
+  branch = "master"
   name = "github.com/c-bata/go-prompt"
   packages = ["."]
-  revision = "c292a2f4b4fe8563883871456e19028ff9df0f26"
-  version = "v0.1.1"
+  revision = "95fb1dd6f46bb6fd222e42eaac1ae92a77c5ca28"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -20,10 +20,46 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/fatih/color"
+  packages = ["."]
+  revision = "507f6050b8568533fb3f5504de8e5205fa62a114"
+  version = "v1.6.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/go-audio/audio"
+  packages = ["."]
+  revision = "7baf9c12ef58aa25fcbbd2265f8f38a12eca3204"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/go-audio/wav"
+  packages = ["."]
+  revision = "5a351b022b0ce3c5746f29c0d2c0a049f37ccc5c"
+
+[[projects]]
   branch = "master"
   name = "github.com/gordonklaus/portaudio"
   packages = ["."]
   revision = "9d16a7dfd66850cd0d78b8d06f9dc4331a86f3f3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/mattetti/audio"
+  packages = ["riff"]
+  revision = "22c1d7c78180089e0ef4d3eb5dd1d20a682d5373"
+
+[[projects]]
+  name = "github.com/mattn/go-colorable"
+  packages = ["."]
+  revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
+  version = "v0.0.9"
+
+[[projects]]
+  name = "github.com/mattn/go-isatty"
+  packages = ["."]
+  revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
+  version = "v0.0.3"
 
 [[projects]]
   branch = "master"
@@ -51,9 +87,12 @@
 
 [[projects]]
   name = "github.com/stretchr/testify"
-  packages = ["assert","require"]
-  revision = "69483b4bd14f5845b5a1e55bca19e954e827f1d0"
-  version = "v1.1.4"
+  packages = [
+    "assert",
+    "require"
+  ]
+  revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
+  version = "v1.2.1"
 
 [[projects]]
   branch = "master"
@@ -70,6 +109,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "99227efcb3a27c788e788a0bda2a31282494d7c27713379b4d1e5fbbec3bb7da"
+  inputs-digest = "6a5f16e6b9bc71692f158233afa9b400e4097fd9cc2b39c4d107b2f1c2f710ea"
   solver-name = "gps-cdcl"
   solver-version = 1
