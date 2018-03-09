@@ -7,7 +7,7 @@ import (
 	"buddin.us/shaden/utils"
 )
 
-func newRecord(name string, c Config) (*Unit, error) {
+func newRecord(io *IO, c Config) (*Unit, error) {
 	var config struct {
 		FileName string
 	}
@@ -24,8 +24,7 @@ func newRecord(name string, c Config) (*Unit, error) {
 		return nil, err
 	}
 
-	io := NewIO()
-	return NewUnit(io, name, &record{
+	return NewUnit(io, &record{
 		in:       io.NewIn("in", dsp.Float64(0)),
 		record:   io.NewIn("record", dsp.Float64(0)),
 		reset:    io.NewIn("reset", dsp.Float64(0)),

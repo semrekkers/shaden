@@ -5,9 +5,8 @@ import (
 	"buddin.us/shaden/errors"
 )
 
-func newStep(name string, _ Config) (*Unit, error) {
-	io := NewIO()
-	return NewUnit(io, name, &step{
+func newStep(io *IO, c Config) (*Unit, error) {
+	return NewUnit(io, &step{
 		in:      io.NewIn("in", dsp.Float64(1)),
 		advance: io.NewIn("advance", dsp.Float64(-1)),
 		reset:   io.NewIn("reset", dsp.Float64(-1)),
