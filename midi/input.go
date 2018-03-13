@@ -25,12 +25,12 @@ func init() {
 func newInput(creator streamCreator, receiver eventReceiver) func(*unit.IO, unit.Config) (*unit.Unit, error) {
 	return func(io *unit.IO, c unit.Config) (*unit.Unit, error) {
 		var config struct {
-			Rate      int
-			Device    int
-			Channels  []int
-			DeviceOut int `mapstructure:"device-out"`
+			Rate     int
+			Device   int
+			Channels []int
+			Feedback int
 		}
-		config.DeviceOut = -1
+		config.Feedback = -1
 		if err := mapstructure.Decode(c, &config); err != nil {
 			return nil, err
 		}
@@ -40,9 +40,9 @@ func newInput(creator streamCreator, receiver eventReceiver) func(*unit.IO, unit
 			return nil, err
 		}
 
-		var midiOut *portmidi.Stream
-		if config.DeviceOut != -1 {
-			midiOut, err = portmidi.NewOutputStream(portmidi.DeviceID(config.DeviceOut), int64(dsp.FrameSize), 0)
+		var feedbackStream *portmidi.Stream
+		if config.Feedback != -1 {
+			feedbackStream, err = portmidi.NewOutputStream(portmidi.DeviceID(config.Feedback), int64(dsp.FrameSize), 0)
 			if err != nil {
 				return nil, err
 			}
@@ -71,9 +71,9 @@ func newInput(creator streamCreator, receiver eventReceiver) func(*unit.IO, unit
 			for i := 1; i < 128; i++ {
 				io.ExposeOutputProcessor(ctrl.newCC(ch, i))
 			}
-			if midiOut != nil {
+			if feedbackStream != nil {
 				for i := 0; i < 64; i++ {
-					io.ExposeOutputProcessor(ctrl.newToggle(ch, i, midiOut))
+					io.ExposeOutputProcessor(ctrl.newToggle(ch, i, feedbackStream))
 				}
 			}
 		}
@@ -135,11 +135,11 @@ func (in *input) newToggle(ch, num int, midiOut *portmidi.Stream) *toggle {
 	// Reset button
 	midiOut.WriteShort(statusNoteOn+int64(ch)-1, int64(num), buttonColorOff)
 	return &toggle{
-		input:   in,
-		ch:      int64(ch),
-		num:     int64(num),
-		midiOut: midiOut,
-		out:     unit.NewOut(fmt.Sprintf("%d/toggle/%d", ch, num), make([]float64, dsp.FrameSize)),
+		input:    in,
+		ch:       int64(ch),
+		num:      int64(num),
+		feedback: midiOut,
+		out:      unit.NewOut(fmt.Sprintf("%d/toggle/%d", ch, num), make([]float64, dsp.FrameSize)),
 	}
 }
 
@@ -343,7 +343,7 @@ type toggle struct {
 	input       *input
 	ch, num     int64
 	value, used bool
-	midiOut     *portmidi.Stream
+	feedback    *portmidi.Stream
 	out         *unit.Out
 }
 
@@ -358,7 +358,7 @@ const (
 
 func (o *toggle) ProcessFrame(n int) {
 	if !o.used {
-		o.midiOut.WriteShort(statusNoteOn+o.ch-1, o.num, buttonColorYellow)
+		o.feedback.WriteShort(statusNoteOn+o.ch-1, o.num, buttonColorYellow)
 		o.used = true
 	}
 	for i := 0; i < n; i++ {
@@ -372,7 +372,7 @@ func (o *toggle) ProcessSample(i int) {
 		if !o.value {
 			buttonColor = buttonColorGreen
 		}
-		o.midiOut.WriteShort(statusNoteOn+o.ch-1, o.num, buttonColor)
+		o.feedback.WriteShort(statusNoteOn+o.ch-1, o.num, buttonColor)
 		o.value = !o.value
 	}
 
