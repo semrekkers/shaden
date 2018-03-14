@@ -50,6 +50,7 @@ var (
 		"euclid":             newEuclid,
 		"filter":             newFilter,
 		"fold":               newFold,
+		"follow":             newFollow,
 		"gate":               newGate,
 		"gate-mix":           newGateMix,
 		"gate-series":        newGateSeries,
