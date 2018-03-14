@@ -73,7 +73,11 @@ func newInput(creator streamCreator, receiver eventReceiver) func(*unit.IO, unit
 			}
 			if feedbackStream != nil {
 				for i := 0; i < 64; i++ {
+					// Reset button
+					feedbackStream.WriteShort(statusNoteOn+int64(ch)-1, int64(i), buttonColorOff)
+
 					io.ExposeOutputProcessor(ctrl.newToggle(ch, i, feedbackStream))
+					io.ExposeOutputProcessor(ctrl.newButton(ch, i, feedbackStream))
 				}
 			}
 		}
@@ -131,15 +135,25 @@ func (in *input) newBend(ch int) *bend {
 	}
 }
 
-func (in *input) newToggle(ch, num int, midiOut *portmidi.Stream) *toggle {
-	// Reset button
-	midiOut.WriteShort(statusNoteOn+int64(ch)-1, int64(num), buttonColorOff)
+func (in *input) newToggle(ch, num int, feedback *portmidi.Stream) *toggle {
 	return &toggle{
 		input:    in,
 		ch:       int64(ch),
 		num:      int64(num),
-		feedback: midiOut,
+		feedback: feedback,
 		out:      unit.NewOut(fmt.Sprintf("%d/toggle/%d", ch, num), make([]float64, dsp.FrameSize)),
+	}
+}
+
+func (in *input) newButton(ch, num int, feedback *portmidi.Stream) *button {
+	return &button{
+		input:    in,
+		ch:       int64(ch),
+		num:      int64(num),
+		state:    buttonStateReleased,
+		value:    -1,
+		feedback: feedback,
+		out:      unit.NewOut(fmt.Sprintf("%d/button/%d", ch, num), make([]float64, dsp.FrameSize)),
 	}
 }
 
@@ -339,6 +353,12 @@ func (o *bend) ProcessSample(i int) {
 	o.out.Write(i, o.value)
 }
 
+const (
+	buttonColorOff    = 0
+	buttonColorYellow = 5
+	buttonColorGreen  = 1
+)
+
 type toggle struct {
 	input       *input
 	ch, num     int64
@@ -349,12 +369,6 @@ type toggle struct {
 
 func (o *toggle) IsProcessable() bool { return o.out.ExternalNeighborCount() > 0 }
 func (o *toggle) Out() *unit.Out      { return o.out }
-
-const (
-	buttonColorOff    = 0
-	buttonColorYellow = 5
-	buttonColorGreen  = 1
-)
 
 func (o *toggle) ProcessFrame(n int) {
 	if !o.used {
@@ -381,4 +395,50 @@ func (o *toggle) ProcessSample(i int) {
 		out = 1.0
 	}
 	o.out.Write(i, out)
+}
+
+type button struct {
+	input    *input
+	ch, num  int64
+	used     bool
+	state    buttonStateFunc
+	value    float64
+	feedback *portmidi.Stream
+	out      *unit.Out
+}
+
+type buttonStateFunc func(*button, *portmidi.Event)
+
+func (b *button) IsProcessable() bool { return b.out.ExternalNeighborCount() > 0 }
+func (b *button) Out() *unit.Out      { return b.out }
+
+func (b *button) ProcessFrame(n int) {
+	if !b.used {
+		b.feedback.WriteShort(statusNoteOn+b.ch-1, b.num, buttonColorYellow)
+		b.used = true
+	}
+	for i := 0; i < n; i++ {
+		b.ProcessSample(i)
+	}
+}
+
+func (b *button) ProcessSample(i int) {
+	b.state(b, &b.input.events[i])
+	b.out.Write(i, b.value)
+}
+
+func buttonStateReleased(b *button, e *portmidi.Event) {
+	if e.Status == statusNoteOn+b.ch-1 && e.Data1 == b.num {
+		b.state = buttonStatePressed
+		b.value = 1
+		b.feedback.WriteShort(statusNoteOn+b.ch-1, b.num, buttonColorGreen)
+	}
+}
+
+func buttonStatePressed(b *button, e *portmidi.Event) {
+	if e.Status == statusNoteOff+b.ch-1 && e.Data1 == b.num {
+		b.state = buttonStateReleased
+		b.value = -1
+		b.feedback.WriteShort(statusNoteOn+b.ch-1, b.num, buttonColorYellow)
+	}
 }
