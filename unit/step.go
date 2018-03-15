@@ -44,8 +44,11 @@ func (s *step) ProcessSample(i int) {
 	out := -1.0
 	if len(serie) > 0 {
 		// When patched, len(serie) can be changed so always check bounds.
-		s.target = s.target % len(serie)
-		if serie[s.target] == stepOn {
+		s.target %= len(serie)
+		if serie[s.target] == ' ' {
+			// Ignore a single space.
+			s.target = (s.target + 1) % len(serie)
+		} else if serie[s.target] == stepOn {
 			out = s.in.Read(i)
 		}
 	}
