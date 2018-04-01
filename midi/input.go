@@ -41,7 +41,7 @@ func newInput(creator streamCreator, receiver eventReceiver) func(*unit.IO, unit
 
 		var feedbackStream *portmidi.Stream
 		if config.Feedback != -1 {
-			feedbackStream, err = portmidi.NewOutputStream(portmidi.DeviceID(config.Feedback), int64(dsp.FrameSize), 0)
+			feedbackStream, err = portmidi.NewOutputStream(portmidi.DeviceID(config.Feedback), int64(c.FrameSize), 0)
 			if err != nil {
 				return nil, err
 			}
@@ -144,7 +144,7 @@ func (in *input) newToggle(ch, num int, feedback *portmidi.Stream) *toggle {
 		ch:       int64(ch),
 		num:      int64(num),
 		feedback: feedback,
-		out:      unit.NewOut(fmt.Sprintf("%d/toggle/%d", ch, num), make([]float64, dsp.FrameSize)),
+		out:      unit.NewOut(fmt.Sprintf("%d/toggle/%d", ch, num), make([]float64, in.frameSize)),
 	}
 }
 
@@ -156,7 +156,7 @@ func (in *input) newButton(ch, num int, feedback *portmidi.Stream) *button {
 		state:    buttonStateReleased,
 		value:    -1,
 		feedback: feedback,
-		out:      unit.NewOut(fmt.Sprintf("%d/button/%d", ch, num), make([]float64, dsp.FrameSize)),
+		out:      unit.NewOut(fmt.Sprintf("%d/button/%d", ch, num), make([]float64, in.frameSize)),
 	}
 }
 

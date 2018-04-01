@@ -120,7 +120,7 @@ func run(args []string) error {
 		if err != nil {
 			return errors.Wrap(err, "creating record file")
 		}
-		//e, err = engine.New(engine.NewRecorderBackend(f, backend), opts...)
+		e, err = engine.New(engine.NewRecorderBackend(f, backend), *frameSize, opts...)
 	} else {
 		e, err = engine.New(backend, *frameSize, opts...)
 	}

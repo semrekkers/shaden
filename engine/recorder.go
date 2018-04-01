@@ -28,6 +28,10 @@ func (b *RecorderBackend) Stop() error {
 	return b.inner.Stop()
 }
 
+func (b *RecorderBackend) SampleRate() int {
+	return b.inner.SampleRate()
+}
+
 func (b *RecorderBackend) FrameSize() int {
 	return b.inner.FrameSize()
 }
