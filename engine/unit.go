@@ -5,21 +5,22 @@ import (
 	"buddin.us/shaden/unit"
 )
 
-func newSink(fadeIn bool) (*unit.Unit, *sink) {
-	io := unit.NewIO("sink")
-	s := &sink{
+func newSink(io *unit.IO, fadeIn, sampleRate, frameSize int) *sink {
+	var (
+		fadeInSamples = dsp.DurationInt(fadeIn, sampleRate).Float64()
+	)
+	return &sink{
 		left: &channel{
-			fadeIn: fadeIn,
+			fadeIn: fadeInSamples,
 			in:     io.NewIn("l", dsp.Float64(0)),
-			out:    make([]float64, dsp.FrameSize),
+			out:    make([]float64, frameSize),
 		},
 		right: &channel{
-			fadeIn: fadeIn,
+			fadeIn: fadeInSamples,
 			in:     io.NewIn("r", dsp.Float64(0)),
-			out:    make([]float64, dsp.FrameSize),
+			out:    make([]float64, frameSize),
 		},
 	}
-	return unit.NewUnit(io, s), s
 }
 
 type sink struct {
@@ -31,14 +32,12 @@ func (s *sink) ProcessSample(i int) {
 	s.right.tick(i)
 }
 
-var fadeSamples = dsp.Duration(100).Float64()
-
 type channel struct {
 	in        *unit.In
 	out       []float64
 	level     float64
 	hasSignal bool
-	fadeIn    bool
+	fadeIn    float64
 }
 
 func (c *channel) tick(i int) {
@@ -48,7 +47,7 @@ func (c *channel) tick(i int) {
 		c.hasSignal = true
 	}
 	if c.level < 1 {
-		c.level += 1 / fadeSamples
+		c.level += 1 / c.fadeIn
 		if c.level > 1 {
 			c.level = 1
 		}

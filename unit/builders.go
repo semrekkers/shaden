@@ -68,7 +68,6 @@ var (
 		"pitch":              newPitch,
 		"quantize":           newQuantize,
 		"random-series":      newRandomSeries,
-		"record":             newRecord,
 		"reverb":             newReverb,
 		"sample":             newWAVSample,
 		"step":               newStep,
@@ -93,11 +92,14 @@ type IOBuilder func(*IO, Config) (*Unit, error)
 type Builder func(Config) (*Unit, error)
 
 // Config is a map that's used to provide configuration options to Builders.
-type Config map[string]interface{}
+type Config struct {
+	Values                map[string]interface{}
+	SampleRate, FrameSize int
+}
 
 // Decode loads a struct with the contents of the raw Config object.
 func (c Config) Decode(v interface{}) error {
-	return mapstructure.Decode(c, v)
+	return mapstructure.Decode(c.Values, v)
 }
 
 // Builders returns all Builders for all Units provided by this package.
@@ -110,8 +112,8 @@ func PrepareBuilders(builders map[string]IOBuilder) map[string]Builder {
 	m := map[string]Builder{}
 	for k, v := range builders {
 		m[k] = func(typ string, f IOBuilder) Builder {
-			return func(cfg Config) (*Unit, error) {
-				return f(NewIO(typ), cfg)
+			return func(c Config) (*Unit, error) {
+				return f(NewIO(typ, c.FrameSize), c)
 			}
 		}(k, v)
 	}

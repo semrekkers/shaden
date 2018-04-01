@@ -15,7 +15,6 @@ import (
 
 	_ "net/http/pprof"
 
-	"buddin.us/shaden/dsp"
 	"buddin.us/shaden/engine"
 	"buddin.us/shaden/engine/portaudio"
 	"buddin.us/shaden/errors"
@@ -32,31 +31,39 @@ func main() {
 
 func run(args []string) error {
 	var (
-		set                  = flag.NewFlagSet("shaden", flag.ContinueOnError)
+		set = flag.NewFlagSet("shaden", flag.ContinueOnError)
+
 		seed                 = set.Int64("seed", 0, "random seed")
-		deviceList           = set.Bool("device-list", false, "list all devices")
-		deviceIn             = set.Int("device-in", 0, "input device")
-		deviceOut            = set.Int("device-out", 1, "output device")
-		deviceLatency        = set.String("device-latency", "low", "latency setting for audio device")
-		deviceFrameSize      = set.Int("device-frame", 1024, "frame size used when writing to audio device")
+		frameSize            = set.Int("frame", 256, "frame size used within the synthesis engine")
 		httpAddr             = set.String("addr", ":5000", "http address to serve")
 		repl                 = set.Bool("repl", false, "REPL")
+		sampleRateShort      = set.Float64("samplerate", 44.1, "sample rate (8, 22.05, 44.1, 48.0)")
 		singleSampleDisabled = set.Bool("disable-single-sample", false, "disables single-sample mode for feedback loops")
-		recordFile           = set.String("rec", "", "record to file")
-		logger               = log.New(os.Stdout, "", 0)
+
+		deviceList      = set.Bool("device-list", false, "list all devices")
+		deviceIn        = set.Int("device-in", 0, "input device")
+		deviceOut       = set.Int("device-out", 1, "output device")
+		deviceLatency   = set.String("device-latency", "low", "latency setting for audio device")
+		deviceFrameSize = set.Int("device-frame", 1024, "frame size used when writing to audio device")
+
+		recordFile = set.String("rec", "", "record to file")
+
+		logger = log.New(os.Stdout, "", 0)
 	)
 
 	if err := set.Parse(args); err != nil {
 		return errors.Wrap(err, "parsing flags")
 	}
 
-	if *deviceFrameSize < dsp.FrameSize {
-		return errors.Errorf("device frame size cannot be less than %d", dsp.FrameSize)
+	if *deviceFrameSize < *frameSize {
+		return errors.Errorf("device frame size cannot be less than %d", *frameSize)
 	}
 
-	if *deviceFrameSize%dsp.FrameSize != 0 {
-		return errors.Errorf("frame size (%d) must be a multiple of %d", *deviceFrameSize, dsp.FrameSize)
+	if *deviceFrameSize%*frameSize != 0 {
+		return errors.Errorf("frame size (%d) must be a multiple of %d", *deviceFrameSize, *frameSize)
 	}
+
+	sampleRate := int(*sampleRateShort * 1000)
 
 	devices, err := portaudio.Initialize()
 	if err != nil {
@@ -92,11 +99,17 @@ func run(args []string) error {
 	rand.Seed(*seed)
 
 	// Create the engine
-	backend, err := portaudio.New(*deviceIn, *deviceOut, *deviceLatency, *deviceFrameSize, dsp.SampleRate)
+	backend, err := portaudio.New(
+		*deviceIn,
+		*deviceOut,
+		*deviceLatency,
+		*deviceFrameSize,
+		int(sampleRate),
+	)
 	if err != nil {
 		return errors.Wrap(err, "creating portaudio backend")
 	}
-	opts := []engine.Option{engine.WithFadeIn()}
+	opts := []engine.Option{engine.WithFadeIn(100)}
 	if *singleSampleDisabled {
 		opts = append(opts, engine.WithSingleSampleDisabled())
 	}
@@ -107,9 +120,9 @@ func run(args []string) error {
 		if err != nil {
 			return errors.Wrap(err, "creating record file")
 		}
-		e, err = engine.New(engine.NewRecorderBackend(f, backend), opts...)
+		//e, err = engine.New(engine.NewRecorderBackend(f, backend), opts...)
 	} else {
-		e, err = engine.New(backend, opts...)
+		e, err = engine.New(backend, *frameSize, opts...)
 	}
 	if err != nil {
 		return errors.Wrap(err, "engine create failed")
