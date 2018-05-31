@@ -1,8 +1,8 @@
 package unit
 
 import (
-	"buddin.us/shaden/dsp"
-	"buddin.us/shaden/errors"
+	"github.com/brettbuddin/shaden/dsp"
+	"github.com/brettbuddin/shaden/errors"
 )
 
 func newStep(io *IO, c Config) (*Unit, error) {
