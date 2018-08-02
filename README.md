@@ -3,7 +3,6 @@
 [![Build Status](https://travis-ci.org/brettbuddin/shaden.svg?branch=ci)](https://travis-ci.org/brettbuddin/shaden)
 [![GoDoc](https://godoc.org/github.com/brettbuddin/shaden?status.svg)](https://godoc.org/github.com/brettbuddin/shaden)
 [![Go Report Card](https://goreportcard.com/badge/github.com/brettbuddin/shaden)](https://goreportcard.com/report/github.com/brettbuddin/shaden)
-[![Coverage Status](https://coveralls.io/repos/github/brettbuddin/shaden/badge.svg?branch=master)](https://coveralls.io/github/brettbuddin/shaden?branch=master)
 
 Shaden is a modular audio synthesizer. Patches for the synthesizer are written in a Lisp dialect. A REPL and HTTP
 interface are provided for interacting with the synthesizer in real-time. I started this project as a way of learning
@@ -35,25 +34,6 @@ On macOS you can install these dependencies with: `brew install go portaudio por
 ### Install
 
     $ go get -u github.com/brettbuddin/shaden
-	$ shaden -h
-	Usage of shaden:
-  	-addr string
-        	http address to serve (default ":5000")
-  	-device-frame int
-        	frame size used when writing to audio device (default 1024)
-  	-device-in int
-        	input device
-  	-device-latency string
-        	latency setting for audio device (default "low")
-  	-device-list
-        	list all devices
-  	-device-out int
-        	output device (default 1)
-  	-repl
-        	REPL
-  	-seed int
-        	random seed
-	flag: help requested
 
 ### CLI Usage
 

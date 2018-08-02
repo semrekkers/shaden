@@ -1,133 +1,109 @@
-// shaden is a modular synthesizer.
 package main
 
 import (
-	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"math"
 	"math/rand"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
-
-	_ "net/http/pprof"
 
 	"github.com/brettbuddin/shaden/engine"
 	"github.com/brettbuddin/shaden/engine/portaudio"
+	"github.com/brettbuddin/shaden/engine/stdout"
 	"github.com/brettbuddin/shaden/errors"
 	"github.com/brettbuddin/shaden/midi"
 	"github.com/brettbuddin/shaden/runtime"
 )
 
 func main() {
-	if err := run(os.Args[1:]); err != nil {
+	cfg, err := parseArgs(os.Args[1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%+v\n", err)
+		os.Exit(1)
+	}
+
+	if err := run(cfg); err != nil {
 		fmt.Fprintf(os.Stderr, "%+v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(args []string) error {
+func run(cfg Config) error {
+	rand.Seed(cfg.Seed)
+
 	var (
-		set = flag.NewFlagSet("shaden", flag.ContinueOnError)
-
-		seed                 = set.Int64("seed", 0, "random seed")
-		frameSize            = set.Int("frame", 256, "frame size used within the synthesis engine")
-		httpAddr             = set.String("addr", ":5000", "http address to serve")
-		repl                 = set.Bool("repl", false, "REPL")
-		sampleRateShort      = set.Float64("samplerate", 44.1, "sample rate (8, 22.05, 44.1, 48.0)")
-		singleSampleDisabled = set.Bool("disable-single-sample", false, "disables single-sample mode for feedback loops")
-
-		deviceList      = set.Bool("device-list", false, "list all devices")
-		deviceIn        = set.Int("device-in", 0, "input device")
-		deviceOut       = set.Int("device-out", 1, "output device")
-		deviceLatency   = set.String("device-latency", "low", "latency setting for audio device")
-		deviceFrameSize = set.Int("device-frame", 1024, "frame size used when writing to audio device")
-
-		recordFile = set.String("rec", "", "record to file")
+		backend engine.Backend
 
 		logger = log.New(os.Stdout, "", 0)
 	)
 
-	if err := set.Parse(args); err != nil {
-		return errors.Wrap(err, "parsing flags")
-	}
-
-	if *deviceFrameSize < *frameSize {
-		return errors.Errorf("device frame size cannot be less than %d", *frameSize)
-	}
-
-	if *deviceFrameSize%*frameSize != 0 {
-		return errors.Errorf("frame size (%d) must be a multiple of %d", *deviceFrameSize, *frameSize)
-	}
-
-	sampleRate := int(*sampleRateShort * 1000)
-
-	devices, err := portaudio.Initialize()
-	if err != nil {
-		return errors.Wrap(err, "initializing portaudio")
-	}
-	defer func() {
-		if err := portaudio.Terminate(); err != nil {
-			logger.Fatal(err)
+	switch cfg.Backend {
+	case backendPortAudio:
+		devices, err := portaudio.Initialize()
+		if err != nil {
+			return errors.Wrap(err, "initializing portaudio")
 		}
-	}()
+		defer func() {
+			if err := portaudio.Terminate(); err != nil {
+				logger.Fatal(err)
+			}
+		}()
 
-	midiDevices, err := midi.Initialize()
-	if err != nil {
-		return errors.Wrap(err, "initializing portmidi")
-	}
-	defer func() {
-		if err := midi.Terminate(); err != nil {
-			logger.Fatal(err)
+		midiDevices, err := midi.Initialize()
+		if err != nil {
+			return errors.Wrap(err, "initializing portmidi")
 		}
-	}()
+		defer func() {
+			if err := midi.Terminate(); err != nil {
+				logger.Fatal(err)
+			}
+		}()
 
-	if *deviceList {
-		fmt.Println("Audio Devices")
-		fmt.Println(devices)
-		fmt.Println("MIDI Devices")
-		fmt.Println(midiDevices)
-		return nil
+		if cfg.DeviceList {
+			fmt.Println("Audio Devices")
+			fmt.Println(devices)
+			fmt.Println("MIDI Devices")
+			fmt.Println(midiDevices)
+			return nil
+		}
+
+		// Create the engine
+		paBackend, err := portaudio.New(
+			cfg.DeviceIn,
+			cfg.DeviceOut,
+			cfg.DeviceLatency,
+			cfg.DeviceFrameSize,
+			int(cfg.SampleRate),
+		)
+		if err != nil {
+			return errors.Wrap(err, "creating portaudio backend")
+		}
+
+		printPreamble(paBackend, cfg.Seed)
+
+		backend = paBackend
+	case backendStdout:
+		logger = log.New(os.Stderr, "", 0)
+		backend = stdout.New(os.Stdout, cfg.FrameSize, int(cfg.SampleRate))
+	default:
+		return errors.Errorf("unknown backend %q", cfg.Backend)
 	}
 
-	if *seed == 0 {
-		*seed = time.Now().UnixNano()
+	opts := []engine.Option{
+		engine.WithFadeIn(cfg.FadeIn),
+		engine.WithGain(dbToFloat(cfg.Gain)),
 	}
-	rand.Seed(*seed)
-
-	// Create the engine
-	backend, err := portaudio.New(
-		*deviceIn,
-		*deviceOut,
-		*deviceLatency,
-		*deviceFrameSize,
-		int(sampleRate),
-	)
-	if err != nil {
-		return errors.Wrap(err, "creating portaudio backend")
-	}
-	opts := []engine.Option{engine.WithFadeIn(100)}
-	if *singleSampleDisabled {
+	if cfg.SingleSampleDisabled {
 		opts = append(opts, engine.WithSingleSampleDisabled())
 	}
-	var e *engine.Engine
-	if *recordFile != "" {
-		var f *os.File
-		f, err = os.Create(*recordFile)
-		if err != nil {
-			return errors.Wrap(err, "creating record file")
-		}
-		e, err = engine.New(engine.NewRecorderBackend(f, backend), *frameSize, opts...)
-	} else {
-		e, err = engine.New(backend, *frameSize, opts...)
-	}
+	e, err := engine.New(backend, cfg.FrameSize, opts...)
 	if err != nil {
 		return errors.Wrap(err, "engine create failed")
 	}
-	printPreamble(backend, *seed)
 
 	// Create the lisp runtime
 	run, err := runtime.New(e, logger)
@@ -137,7 +113,9 @@ func run(args []string) error {
 
 	// Start the HTTP server
 	go func() {
-		if err := serve(*httpAddr, run); err != nil {
+		mux := http.NewServeMux()
+		runtime.AddHandler(mux, run)
+		if err := http.ListenAndServe(cfg.HTTPAddr, mux); err != nil {
 			logger.Fatal(err)
 		}
 	}()
@@ -151,14 +129,14 @@ func run(args []string) error {
 	}()
 	defer e.Stop()
 
-	if len(set.Args()) > 0 {
-		if err := run.Load(set.Arg(0)); err != nil {
+	if cfg.ScriptPath != "" {
+		if err := run.Load(cfg.ScriptPath); err != nil {
 			return errors.Wrap(err, "file eval failed")
 		}
 	}
 
 	replDone := make(chan struct{})
-	if *repl {
+	if cfg.REPL {
 		go run.REPL(replDone)
 	}
 
@@ -199,22 +177,6 @@ func printPreamble(pa *portaudio.PortAudio, seed int64) {
 	)
 }
 
-func serve(addr string, run *runtime.Runtime) error {
-	http.HandleFunc("/eval", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusNotImplemented)
-			return
-		}
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		if _, err := run.Eval(body); err != nil {
-			fmt.Fprintf(w, "%s", err)
-			return
-		}
-		fmt.Fprintf(w, "OK")
-	})
-	return http.ListenAndServe(addr, nil)
+func dbToFloat(v float64) float32 {
+	return float32(math.Pow(10, 0.05*v))
 }

@@ -2,8 +2,6 @@ package engine
 
 import (
 	"time"
-
-	"github.com/brettbuddin/shaden/errors"
 )
 
 // NewMessage creates a new Message to be sent to the Engine for evaluation.
@@ -55,11 +53,7 @@ func (b messageChannel) Receive() *Message {
 }
 
 func (b messageChannel) Send(msg *Message) error {
-	select {
-	case b.messages <- msg:
-	case <-time.After(10 * time.Second):
-		return errors.New("timeout sending message")
-	}
+	b.messages <- msg
 	return nil
 }
 func (b messageChannel) Close() { close(b.messages) }
